@@ -1,16 +1,17 @@
-# This is a sample Python script.
+import time
+import musepy.common as muse
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+note = muse.note("A")
+print(note)
 
+v = 0
+for i in range(12):
+    st = time.time()
+    temp = note.flat()
+    ed = time.time()
+    v += ed - st
+    temp = str(temp)
+    tempp = tuple([str(x) for x in note.normal()])
+    print(f"\tadd semi {i+1}:\t{temp}\t{tempp}")
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
-
-
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+print(f"Mean time cost of .flat = {v / 12}")
