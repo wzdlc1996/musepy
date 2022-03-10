@@ -1,8 +1,9 @@
 from __future__ import annotations
+from copy import deepcopy
+from gettext import find
 from operator import ne
-
-from typing import Tuple
-from re import fullmatch
+from typing import Tuple, List
+from re import fullmatch, findall
 
 
 relNoteVal = {
@@ -141,11 +142,37 @@ class score:
         """
         A score is a list of notes
         """
-        self.notes = []
+        self.notes: List[note] = []
         self.time = 0
 
     def __len__(self):
         return len(self.notes)
+
+    def __getitem__(self, k):
+        return self.notes[k]
+
+    def append(self, note: note):
+        self.notes.append(note)
+        self.time += note.dur
+
+    def normalizable(self) -> Tuple[score, bool]:
+        selfcopy = deepcopy(self)
+        for i in range(octave_len):
+            isnorm = True
+            for x in self:
+                _, yes = x.normal()
+                isnorm = isnorm and yes
+            
+            if isnorm:
+                return self, True
+
+            for x in self:
+                x.sharp()
+        self = selfcopy
+        return self, False
+
+    def __str__(self):
+        return ", ".join([str(x) for x in self.notes])
 
     def play(self):
         """
@@ -155,6 +182,30 @@ class score:
         """
         for note in self.notes:
             note.play()
+
+
+def parseNote(notes: str, dur: str) -> note:
+    """
+    parse the note symbol into note object
+
+    :param note: (str), like 'C4#', 'C3', 'A2b'
+    :param dur: (str), duration of the note, like '1/4', '1/16', '1'
+    """
+    if '/' in dur:
+        denm = findall(r'1/(\d+)', dur)[0]
+        dur = calculateNoteDuration(1/denm)
+    else:
+        dur = calculateNoteDuration(dur)
+
+    name, group, shift = findall(r'([A-Z])(\d+)(.*)', notes)[0]
+    nt = note(name, dur, group)
+
+    if shift == "#":
+        nt.sharp()
+    elif shift == "b":
+        nt.flat()
+    
+    return nt
 
 
 def calculateNoteDuration(relToWhole: float) -> int:
