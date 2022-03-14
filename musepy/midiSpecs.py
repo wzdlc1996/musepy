@@ -43,7 +43,7 @@ _specs = [
 ]
 
 
-def initSpecByStatus() -> Dict[int[dict]]:
+def initSpecByStatus() -> Dict[int, dict]:
     res = {}
     for spec in _specs:
         type = spec["type"]
@@ -59,3 +59,6 @@ def initSpecByStatus() -> Dict[int[dict]]:
 
 
 SpecByStatus = initSpecByStatus()
+
+
+NoteMap = {}

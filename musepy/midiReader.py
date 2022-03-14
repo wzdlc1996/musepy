@@ -15,16 +15,28 @@ TODO: Complete the code.
 """
 
 
-from asyncore import read
-from operator import length_hint
-from pickletools import read_bytes1
+from multiprocessing.sharedctypes import Value
 from struct import unpack
 from typing import BinaryIO, Tuple, List, Any
 
-from midiStatus import SpecByStatus
+from musepy.midiSpecs import SpecByStatus
 
 
 _maxMsgLen = 1000
+
+
+def ReadMIDIFile(filename: str) -> tuple:
+    """
+    Simple interface to read a midi file
+    """
+    with open(filename, "rb") as f:
+        tp, num_tracks, ticks_per_beat = readHeader(f)
+        trk = []
+        for i in range(num_tracks):
+            trk.append(readTrack(f))
+    
+    return (tp, num_tracks, ticks_per_beat), trk
+
 
 
 def readChunckHeader(file: BinaryIO) -> Tuple[bytes, int]:
@@ -88,7 +100,7 @@ def readHeader(file: BinaryIO) -> Tuple[int, int, int]:
     return unpack('>3h', data[:6])
     
 
-def readTrack(file: BinaryIO) -> List[bytes]:
+def readTrack(file: BinaryIO) -> List[tuple]:
     """
     Read the track of a MIDI file
         A track is one 8-byte header and sequence of event defined by MIDI
@@ -140,10 +152,35 @@ def readTrack(file: BinaryIO) -> List[bytes]:
         else:
             msg = readMessage(file, status, peek_data, delta)
         
+        
+        msg = messageWrap(msg)
         if msg is not None:
             track.append(msg)
 
     return track
+
+
+def messageWrap(msg: Any) -> Any:
+    """
+    Only ouput the note_on and note_off message. 
+
+    :return: (bool), Ture for note_on, False for note_off
+    :return: (int), time
+    :return: (int), note number
+    """
+    if msg is None:
+        return None
+    status, databytes, delta = msg
+    if SpecByStatus[status]["type"] == "note_on":
+        note_on = True
+    elif SpecByStatus[status]["type"] == "note_off":
+        note_on = False
+    else:
+        return None
+    
+    note = databytes[0]
+    return note_on, note, delta
+
 
 
 def readMetaMessage(file: BinaryIO, delta: int, *args) -> Any:
@@ -159,8 +196,20 @@ def readSysex(file, *args):
     return None
 
 
-def readMessage(*args):
-    pass
+def readMessage(file: BinaryIO, status: int, peek_data: List[int], delta: int) -> Tuple[int, list, int]:
+    try:
+        spec = SpecByStatus[status]
+    except LookupError:
+        raise IOError("undefined status 0x{:02x}".format(status))
+
+    # Subtract 1 for status byte.
+    size = spec["length"] - 1 - len(peek_data)
+    databytes = peek_data + readBytes(file, size)
+    for data in databytes:
+        if data > 127:
+            raise IOError("data byte must be in range 0..127")
+    
+    return status, databytes, delta
 
 
 def readDynamicBytes(file: BinaryIO) -> int:

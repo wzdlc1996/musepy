@@ -2,3 +2,5 @@
 .vscode
 .idea
 musepy/__pycache__
+midiFiles
+*Test.py
